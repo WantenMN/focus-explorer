@@ -1,9 +1,12 @@
 import { Plugin, WorkspaceLeaf } from "obsidian";
-import { FocusExplorerSettings, DEFAULT_SETTINGS } from "./settings";
+import { FocusExplorerSettings, DEFAULT_SETTINGS, RECENT_FOCUS_LIMIT } from "./settings";
 import { FocusExplorerView, VIEW_TYPE_FOCUS_EXPLORER } from "./view";
+
+type PluginData = FocusExplorerSettings & { recentFocus?: unknown };
 
 export default class FocusExplorerPlugin extends Plugin {
 	settings!: FocusExplorerSettings;
+	recentFocus: string[] = [];
 
 	async onload() {
 		await this.loadSettings();
@@ -78,15 +81,28 @@ export default class FocusExplorerPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<FocusExplorerSettings>,
-		);
+		const data = ((await this.loadData()) ?? {}) as Partial<PluginData> & Record<string, unknown>;
+		this.recentFocus = Array.isArray(data.recentFocus)
+			? data.recentFocus.filter((p): p is string => typeof p === "string")
+			: [];
+		delete data.recentFocus;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+	}
+
+	getRecentFocus(): string[] {
+		return [...this.recentFocus];
+	}
+
+	setRecentFocus(paths: string[]): void {
+		this.recentFocus = paths.slice(0, RECENT_FOCUS_LIMIT);
+		void this.saveSettings();
 	}
 
 	async saveSettings() {
-		await this.saveData(this.settings);
+		await this.saveData({
+			autoReveal: this.settings.autoReveal,
+			recentFocus: this.recentFocus,
+		} satisfies PluginData);
 	}
 
 	onunload() {}

@@ -10,6 +10,7 @@ import {
 } from "obsidian";
 import FocusExplorerPlugin from "./main";
 import { FileExplorerEntry } from "./explorer/types";
+import { RECENT_FOCUS_LIMIT } from "./settings";
 import {
 	buildEntries,
 	listAllSubfolders,
@@ -171,22 +172,15 @@ private scrollContainer: HTMLElement | null = null;
 	}
 
 	private persistRecentFocus(): void {
-		this.app.saveLocalStorage("focus-explorer-recent-focus", JSON.stringify(this.recentFocusPaths));
+		this.plugin.setRecentFocus(this.recentFocusPaths);
 	}
 
 	private loadRecentFocus(): void {
-		const saved = this.app.loadLocalStorage("focus-explorer-recent-focus") as string | null;
-		if (!saved) return;
-		try {
-			const arr = JSON.parse(saved) as string[];
-
-			this.recentFocusPaths = arr
-				.map(normalizePath)
-				.filter((p) => this.app.vault.getAbstractFileByPath(p) instanceof TFolder)
-				.slice(0, 10);
-		} catch {
-			this.recentFocusPaths = [];
-		}
+		this.recentFocusPaths = this.plugin
+			.getRecentFocus()
+			.map(normalizePath)
+			.filter((p) => this.app.vault.getAbstractFileByPath(p) instanceof TFolder)
+			.slice(0, RECENT_FOCUS_LIMIT);
 	}
 
 	private addRecentFocus(path: string): void {
@@ -194,7 +188,7 @@ private scrollContainer: HTMLElement | null = null;
 		this.recentFocusPaths = [
 			normalized,
 			...this.recentFocusPaths.filter((p) => p !== normalized),
-		].slice(0, 10);
+		].slice(0, RECENT_FOCUS_LIMIT);
 		this.persistRecentFocus();
 	}
 

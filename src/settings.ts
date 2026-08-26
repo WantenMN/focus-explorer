@@ -5,3 +5,5 @@ export interface FocusExplorerSettings {
 export const DEFAULT_SETTINGS: FocusExplorerSettings = {
 	autoReveal: true,
 };
+
+export const RECENT_FOCUS_LIMIT = 10;
