@@ -872,6 +872,11 @@ removeBtn.addEventListener("click", (e) => {
 		}
 		item.appendChild(chevronWrap);
 
+		const dotIdx = entry.is_dir ? -1 : entry.name.lastIndexOf(".");
+		const hasExt = dotIdx > 0 && dotIdx < entry.name.length - 1;
+		const ext = hasExt ? entry.name.slice(dotIdx + 1).toLowerCase() : "";
+		const baseName = hasExt ? entry.name.slice(0, dotIdx) : entry.name;
+
 		if (isEditing) {
 			const input = createEl("input");
 			input.addClass("focus-explorer-input");
@@ -896,20 +901,25 @@ removeBtn.addEventListener("click", (e) => {
 				this.editName = (e.target as HTMLInputElement).value;
 			});
 			item.appendChild(input);
+			if (hasExt && ext !== "md") {
+				const tagSpan = createSpan();
+				tagSpan.addClass("focus-explorer-item-tag");
+				tagSpan.setText(ext.toUpperCase());
+				item.appendChild(tagSpan);
+			}
 
 			window.setTimeout(() => {
 				input.focus();
 				input.select();
 			}, 10);
 		} else {
-			const ext = entry.is_dir ? "" : entry.name.slice(entry.name.lastIndexOf(".") + 1).toLowerCase();
-			const displayName = entry.is_dir ? entry.name : entry.name.replace(/\.[^.]+$/, "");
+			const displayName = baseName;
 			const nameSpan = createSpan();
 			nameSpan.addClass("focus-explorer-name");
 			nameSpan.setText(displayName);
 			nameSpan.title = entry.name;
 			item.appendChild(nameSpan);
-			if (ext === "base" || ext === "canvas") {
+			if (hasExt && ext !== "md") {
 				const tagSpan = createSpan();
 				tagSpan.addClass("focus-explorer-item-tag");
 				tagSpan.setText(ext.toUpperCase());
@@ -1200,28 +1210,26 @@ removeBtn.addEventListener("click", (e) => {
 		});
 	}
 
+	private stripExtension(name: string): string {
+		const dotIdx = name.lastIndexOf(".");
+		return dotIdx > 0 && dotIdx < name.length - 1 ? name.slice(0, dotIdx) : name;
+	}
+
 	private async handleRename() {
 		if (!this.editingItem) return;
 		const item = this.editingItem;
 		const newName = this.editName.trim();
 		this.editingItem = null;
-		if (!newName) {
+		if (!newName.trim()) {
 			this.render();
 			return;
 		}
-		const isFile = !this.entries.find((e) => e.path === item.path)?.is_dir;
-		let finalName = newName;
-		if (isFile) {
-			const dot = item.path.lastIndexOf(".");
-			const ext = dot !== -1 ? item.path.slice(dot) : ".md";
-			finalName = `${newName.replace(/\.[^.]+$/, "")}${ext}`;
-		}
-		if (finalName === basename(item.path) || finalName === item.name) {
+		if (newName.trim() === item.name) {
 			this.render();
 			return;
 		}
 		try {
-			const newPath = await renameItem(this.app, item.path, finalName);
+			const newPath = await renameItem(this.app, item.path, newName);
 			this.focusedPath = newPath;
 			this.selectedPaths = new Set([newPath]);
 			this.anchorPath = newPath;
@@ -1576,9 +1584,9 @@ removeBtn.addEventListener("click", (e) => {
 			menu.addSeparator();
 			menu.addItem((item) =>
 				item.setTitle("Rename").setIcon("pencil").onClick(() => {
-					const nameWithoutExt = entry.is_dir ? entry.name : entry.name.replace(/\.md$/, "");
+					const baseName = entry.is_dir ? entry.name : this.stripExtension(entry.name);
 					this.editingItem = { path: entry.path, name: entry.name };
-					this.editName = nameWithoutExt;
+					this.editName = baseName;
 					this.render();
 				}),
 			);
@@ -1760,9 +1768,9 @@ removeBtn.addEventListener("click", (e) => {
 			if (idx !== -1) {
 				const entry = this.entries[idx];
 				if (!entry) return;
-				const nameWithoutExt = entry.is_dir ? entry.name : entry.name.replace(/\.md$/, "");
+				const baseName = entry.is_dir ? entry.name : this.stripExtension(entry.name);
 				this.editingItem = { path: entry.path, name: entry.name };
-				this.editName = nameWithoutExt;
+				this.editName = baseName;
 				this.render();
 			}
 		} else if (e.key === "Delete") {
