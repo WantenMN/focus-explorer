@@ -1133,6 +1133,9 @@ removeBtn.addEventListener("click", (e) => {
 
 		if (opts.followVaultSettings && type === "file") {
 			parentPathStr = this.getDefaultNewNoteLocation();
+			if (parentPathStr && !(this.app.vault.getAbstractFileByPath(parentPathStr) instanceof TFolder)) {
+				parentPathStr = "";
+			}
 			depth = parentPathStr ? 1 : 0;
 		} else {
 			let targetEntry: FileExplorerEntry | undefined = opts.entry;
