@@ -902,11 +902,19 @@ removeBtn.addEventListener("click", (e) => {
 				input.select();
 			}, 10);
 		} else {
+			const ext = entry.is_dir ? "" : entry.name.slice(entry.name.lastIndexOf(".") + 1).toLowerCase();
+			const displayName = entry.is_dir ? entry.name : entry.name.replace(/\.[^.]+$/, "");
 			const nameSpan = createSpan();
 			nameSpan.addClass("focus-explorer-name");
-			nameSpan.setText(entry.is_dir ? entry.name : entry.name.replace(/\.md$/, ""));
+			nameSpan.setText(displayName);
 			nameSpan.title = entry.name;
 			item.appendChild(nameSpan);
+			if (ext === "base" || ext === "canvas") {
+				const tagSpan = createSpan();
+				tagSpan.addClass("focus-explorer-item-tag");
+				tagSpan.setText(ext.toUpperCase());
+				item.appendChild(tagSpan);
+			}
 			if (this.focusedFolderPath === entry.path) {
 				const parent = parentPath(entry.path);
 				if (parent) {
