@@ -16,6 +16,13 @@ export interface DragState {
 	dropTarget: DropTarget | null;
 }
 
+function isSameDropTarget(a: DropTarget | null, b: DropTarget | null): boolean {
+	if (a === b) return true;
+	const pathA = a?.entry?.path ?? null;
+	const pathB = b?.entry?.path ?? null;
+	return (a?.position ?? null) === (b?.position ?? null) && pathA === pathB;
+}
+
 const DRAG_THRESHOLD = 5;
 const FOLDER_EXPAND_DELAY = 800;
 const SCROLL_ZONE = 40;
@@ -63,7 +70,6 @@ export class DragDropManager {
 		};
 		this.pendingMouse = { x: e.clientX, y: e.clientY };
 		this.lastMouseY = e.clientY;
-		this.startTick();
 		this.attachWindowListeners();
 	}
 
@@ -83,6 +89,7 @@ export class DragDropManager {
 
 	private handleMouseMove(e: MouseEvent) {
 		this.pendingMouse = { x: e.clientX, y: e.clientY };
+		this.startTick();
 	}
 
 	private handleMouseUp() {
@@ -115,8 +122,7 @@ export class DragDropManager {
 
 			const pending = this.pendingMouse;
 			if (!this.dragState) {
-				if (pending) this.pendingMouse = null;
-				this.rafTickId = window.requestAnimationFrame(tick);
+				this.stopTick();
 				return;
 			}
 			if (pending) {
@@ -148,8 +154,7 @@ export class DragDropManager {
 				if (scrollChanged) {
 					const dropTarget = this.calculateDropTarget(this.lastMouseY);
 					const cur = this.dragState.dropTarget;
-					const changed = JSON.stringify(cur) !== JSON.stringify(dropTarget);
-					if (changed) {
+					if (!isSameDropTarget(cur, dropTarget)) {
 						this.dragState = { ...this.dragState, dropTarget };
 						this.handleFolderExpand(dropTarget);
 					}
@@ -316,8 +321,7 @@ export class DragDropManager {
 		if (!this.dragState?.isDragging) return;
 		const dropTarget = this.calculateDropTarget(this.lastMouseY);
 		const cur = this.dragState.dropTarget;
-		const changed = JSON.stringify(cur) !== JSON.stringify(dropTarget);
-		if (changed) {
+		if (!isSameDropTarget(cur, dropTarget)) {
 			this.dragState = { ...this.dragState, dropTarget };
 			this.handleFolderExpand(dropTarget);
 		}
