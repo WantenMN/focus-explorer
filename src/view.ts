@@ -1202,7 +1202,12 @@ removeBtn.addEventListener("click", (e) => {
 			return;
 		}
 		const isFile = !this.entries.find((e) => e.path === item.path)?.is_dir;
-		const finalName = isFile ? newName.replace(/\.md$/, "") + ".md" : newName;
+		let finalName = newName;
+		if (isFile) {
+			const dot = item.path.lastIndexOf(".");
+			const ext = dot !== -1 ? item.path.slice(dot) : ".md";
+			finalName = `${newName.replace(/\.[^.]+$/, "")}${ext}`;
+		}
 		if (finalName === basename(item.path) || finalName === item.name) {
 			this.render();
 			return;
