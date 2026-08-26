@@ -36,7 +36,7 @@ export default class FocusExplorerPlugin extends Plugin {
 					const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_FOCUS_EXPLORER);
 					for (const leaf of leaves) {
 						if (leaf.view instanceof FocusExplorerView) {
-							await leaf.view.revealFile(file.path, true);
+							await leaf.view.revealFile(file.path, { force: true });
 						}
 					}
 				}
@@ -85,8 +85,9 @@ export default class FocusExplorerPlugin extends Plugin {
 		this.recentFocus = Array.isArray(data.recentFocus)
 			? data.recentFocus.filter((p): p is string => typeof p === "string")
 			: [];
-		delete data.recentFocus;
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+		this.settings = {
+			autoReveal: typeof data.autoReveal === "boolean" ? data.autoReveal : DEFAULT_SETTINGS.autoReveal,
+		};
 	}
 
 	getRecentFocus(): string[] {
@@ -100,7 +101,7 @@ export default class FocusExplorerPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData({
-			autoReveal: this.settings.autoReveal,
+			...this.settings,
 			recentFocus: this.recentFocus,
 		} satisfies PluginData);
 	}

@@ -4,8 +4,3 @@ export interface FileExplorerEntry {
 	is_dir: boolean;
 	depth: number;
 }
-
-export interface VaultOpsResult {
-	success: boolean;
-	error?: string;
-}

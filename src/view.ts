@@ -372,9 +372,6 @@ removeBtn.addEventListener("click", (e) => {
 				input.blur();
 			}
 		});
-		input.addEventListener("blur", () => {
-			window.setTimeout(() => this.closeFocusDropdown(), 150);
-		});
 
 		const historyBtn = this.focusBarEl.createSpan({
 			cls: "focus-bar-btn focus-bar-history",
@@ -609,12 +606,19 @@ removeBtn.addEventListener("click", (e) => {
 		this.registerEvent(
 			this.app.workspace.on("file-open", (file) => {
 				if (file && this.plugin.settings.autoReveal) {
-					void this.revealFile(file.path, true);
+					void this.revealFile(file.path);
 				}
 			}),
 		);
 
 		this.registerDomEvent(window, "keydown", (e: KeyboardEvent) => this.handleKeyDown(e));
+
+		this.registerDomEvent(document, "pointerdown", (e: PointerEvent) => {
+			const target = e.target as Node | null;
+			if (!target || !this.focusBarEl?.contains(target)) {
+				this.closeFocusDropdown();
+			}
+		});
 
 		this.registerDomEvent(window, "drag-expand-folder" as keyof WindowEventMap, (e: Event) => {
 			const ce = e as CustomEvent<{ path: string }>;
@@ -664,9 +668,7 @@ removeBtn.addEventListener("click", (e) => {
 		await this.refresh();
 
 		const active = this.app.workspace.getActiveFile();
-		if (active && this.plugin.settings.autoReveal) {
-			void this.revealFile(active.path, true);
-		}
+		if (active) void this.revealFile(active.path);
 
 		this.registerInterval(window.setInterval(() => this.persistState(), 1000));
 	}
@@ -677,7 +679,12 @@ removeBtn.addEventListener("click", (e) => {
 		this.contentEl.empty();
 	}
 
+	private lastPersistSnapshot: string | null = null;
+
 	private persistState() {
+		const snapshot = JSON.stringify([Array.from(this.expandedPaths), this.focusedPath, Array.from(this.selectedPaths)]);
+		if (snapshot === this.lastPersistSnapshot) return;
+		this.lastPersistSnapshot = snapshot;
 		this.app.saveLocalStorage("focus-explorer-expanded", JSON.stringify(Array.from(this.expandedPaths)));
 		if (this.focusedPath) this.app.saveLocalStorage("focus-explorer-focused", this.focusedPath);
 		else this.app.saveLocalStorage("focus-explorer-focused", null);
@@ -786,7 +793,7 @@ removeBtn.addEventListener("click", (e) => {
 			this.renderHeader();
 			if (this.plugin.settings.autoReveal) {
 				const active = this.app.workspace.getActiveFile();
-				if (active) void this.revealFile(active.path, true);
+				if (active) void this.revealFile(active.path);
 			}
 		}, this.plugin.settings.autoReveal);
 		makeBtn("chevrons-down-up", "Collapse all", () => void this.collapseAll());
@@ -1663,8 +1670,7 @@ removeBtn.addEventListener("click", (e) => {
 		}
 		if (!leaf) leaf = this.app.workspace.getLeaf(true);
 		await leaf.openFile(file);
-
-		this.app.workspace.setActiveLeaf(leaf, { focus: true });
+		void this.app.workspace.revealLeaf(leaf);
 
 		if (file.extension === "md") {
 			const view = leaf.view as { editor?: { focus: () => void } };
@@ -1684,7 +1690,7 @@ removeBtn.addEventListener("click", (e) => {
 		if (!(file instanceof TFile)) return;
 		const leaf = this.app.workspace.getLeaf(true);
 		await leaf.openFile(file);
-		this.app.workspace.setActiveLeaf(leaf, { focus: true });
+		void this.app.workspace.revealLeaf(leaf);
 		if (file.extension === "md") {
 			const view = leaf.view as { editor?: { focus: () => void } };
 			if (view?.editor) {
@@ -1704,8 +1710,9 @@ removeBtn.addEventListener("click", (e) => {
 		this.contentEl.focus();
 	}
 
-	async revealFile(path: string, isManual = false) {
-		if (!path || !this.plugin.settings.autoReveal || !isManual) return;
+	async revealFile(path: string, opts?: { force?: boolean }) {
+		if (!path) return;
+		if (!opts?.force && !this.plugin.settings.autoReveal) return;
 		const normalizedTarget = normalizePath(path);
 
 		const file = this.app.vault.getAbstractFileByPath(normalizedTarget);
@@ -1764,6 +1771,7 @@ removeBtn.addEventListener("click", (e) => {
 		if (target.instanceOf(HTMLInputElement) || target.instanceOf(HTMLTextAreaElement) || target.isContentEditable) return;
 		const hasFocus = this.contentEl.contains(document.activeElement) || this.isActive;
 		if (!hasFocus) return;
+		if (document.querySelector(".focus-explorer-modal-overlay")) return;
 
 		if (e.key === "F2") {
 			e.preventDefault();
