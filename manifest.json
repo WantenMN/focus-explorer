@@ -3,7 +3,7 @@
 	"name": "Focus Explorer",
 	"version": "0.1.0",
 	"minAppVersion": "1.13.0",
-	"description": "An Obsidian file explorer with folder focus, inline create/rename, drag & drop, copy/cut/paste, and auto-reveal.",
+	"description": "An Obsidian file explorer with folder focus.",
 	"author": "WantenMN",
 	"authorUrl": "https://github.com/WantenMN",
 	"license": "AGPL-3.0",
