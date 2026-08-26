@@ -106,11 +106,14 @@ export function listAllSubfolders(app: App, folderPath: string): string[] {
 	return result;
 }
 
-export async function createFile(app: App, dirPath: string, name: string): Promise<string> {
+export type NewFileKind = "md" | "base" | "canvas";
+
+export async function createFile(app: App, dirPath: string, name: string, kind: NewFileKind = "md"): Promise<string> {
 	let fullName = name.trim();
 	if (!fullName) throw new Error("Name cannot be empty");
 
-	if (!fullName.endsWith(".md")) fullName = `${fullName}.md`;
+	const suffix = `.${kind}`;
+	if (!fullName.toLowerCase().endsWith(suffix)) fullName = `${fullName}${suffix}`;
 	const normalizedDir = normalizePath(dirPath);
 	const newPath = normalizedDir ? `${normalizedDir}/${fullName}` : fullName;
 	if (app.vault.getAbstractFileByPath(newPath)) throw new Error(`File already exists: ${newPath}`);

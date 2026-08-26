@@ -45,6 +45,7 @@ export class FocusExplorerView extends ItemView {
 
 	private newItem: {
 		type: "file" | "folder";
+		fileExt?: "md" | "base" | "canvas";
 		parentPath: string;
 		depth: number;
 		insertIndex: number;
@@ -777,7 +778,7 @@ removeBtn.addEventListener("click", (e) => {
 			return btn;
 		};
 
-		makeBtn("file-plus", "New file", () => this.startCreate("file", { followVaultSettings: true }));
+		makeBtn("file-plus", "New note", () => this.startCreate("file", { followVaultSettings: true }));
 		makeBtn("folder-plus", "New folder", () => this.startCreate("folder"));
 		makeBtn("list-tree", "Auto reveal", () => {
 			this.plugin.settings.autoReveal = !this.plugin.settings.autoReveal;
@@ -999,12 +1000,19 @@ removeBtn.addEventListener("click", (e) => {
 		return item;
 	}
 
-	private renderNewItemInput(container: HTMLElement, newItem: { type: "file" | "folder"; parentPath: string; depth: number; insertIndex: number }) {
+	private renderNewItemInput(container: HTMLElement, newItem: { type: "file" | "folder"; fileExt?: "md" | "base" | "canvas"; parentPath: string; depth: number; insertIndex: number }) {
 		const wrap = container.createDiv({ cls: "focus-explorer-new-input-wrap" });
 		wrap.style.paddingLeft = `${newItem.depth * 12 + 26}px`;
 		wrap.addEventListener("click", (e) => e.stopPropagation());
 		const input = wrap.createEl("input", { cls: "focus-explorer-input" });
-		input.placeholder = newItem.type === "file" ? "filename" : "folder name";
+		input.placeholder =
+			newItem.type === "folder"
+				? "folder name"
+				: newItem.fileExt === "base"
+					? "base name"
+					: newItem.fileExt === "canvas"
+						? "canvas name"
+						: "note name";
 
 		window.setTimeout(() => {
 			input.focus();
@@ -1044,6 +1052,7 @@ removeBtn.addEventListener("click", (e) => {
 		if (!this.newItem) return;
 		const nameToUse = overrideName?.trim() ?? "";
 		const type = this.newItem.type;
+		const fileExt = this.newItem.fileExt ?? "md";
 		const parentPathStr = this.newItem.parentPath;
 		this.newItem = null;
 		if (!nameToUse) {
@@ -1053,7 +1062,7 @@ removeBtn.addEventListener("click", (e) => {
 		try {
 			let newPath: string;
 			if (type === "file") {
-				newPath = await createFile(this.app, parentPathStr, nameToUse);
+				newPath = await createFile(this.app, parentPathStr, nameToUse, fileExt);
 			} else {
 				newPath = await createFolder(this.app, parentPathStr, nameToUse);
 			}
@@ -1099,7 +1108,7 @@ removeBtn.addEventListener("click", (e) => {
 
 	private startCreate(
 		type: "file" | "folder",
-		opts: { entry?: FileExplorerEntry; followVaultSettings?: boolean } = {},
+		opts: { entry?: FileExplorerEntry; followVaultSettings?: boolean; ext?: "md" | "base" | "canvas" } = {},
 	) {
 		let parentPathStr = "";
 		let depth = 0;
@@ -1173,7 +1182,7 @@ removeBtn.addEventListener("click", (e) => {
 			depth = parentPathStr
 				? (this.entries.find((e) => normalizePath(e.path) === parentPathStr)?.depth ?? 0) + 1
 				: 0;
-			this.newItem = { type, parentPath: parentPathStr, depth, insertIndex };
+			this.newItem = { type, fileExt: opts.ext, parentPath: parentPathStr, depth, insertIndex };
 			this.render();
 
 			window.setTimeout(() => {
@@ -1504,10 +1513,16 @@ removeBtn.addEventListener("click", (e) => {
 
 		if (isFolder || isEmpty) {
 			menu.addItem((item) =>
-				item.setTitle("New file").setIcon("file-plus").onClick(() => this.startCreate("file", { entry })),
+				item.setTitle("New note").setIcon("file-plus").onClick(() => this.startCreate("file", { entry })),
 			);
 			menu.addItem((item) =>
 				item.setTitle("New folder").setIcon("folder-plus").onClick(() => this.startCreate("folder", { entry })),
+			);
+			menu.addItem((item) =>
+				item.setTitle("New base").setIcon("lucide-layout-list").onClick(() => this.startCreate("file", { entry, ext: "base" })),
+			);
+			menu.addItem((item) =>
+				item.setTitle("New canvas").setIcon("lucide-layout-dashboard").onClick(() => this.startCreate("file", { entry, ext: "canvas" })),
 			);
 			menu.addSeparator();
 		}
