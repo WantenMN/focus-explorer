@@ -51,8 +51,7 @@ export function buildEntries(
 			return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
 		});
 		for (const child of children) {
-
-			if (child instanceof TFile && !isSupportedFile(child.name)) continue;
+			if (child instanceof TFile && !isFileShown(app, child)) continue;
 			const entry: import("./types").FileExplorerEntry = {
 				name: child.name,
 				path: normalizePath(child.path),
@@ -108,6 +107,38 @@ export function listAllSubfolders(app: App, folderPath: string): string[] {
 
 export type NewFileKind = "md" | "base" | "canvas";
 
+type VaultWithConfig = {
+	getConfig?: (key: string) => unknown;
+};
+
+type ViewRegistryLike = {
+	isExtensionRegistered?: (extension: string) => boolean;
+};
+
+const SHOWN_EXTENSIONS = new Set([
+	"bmp", "png", "jpg", "jpeg", "gif", "svg", "webp", "avif",
+	"mp3", "wav", "m4a", "3gp", "flac", "ogg", "oga", "opus",
+	"mp4", "webm", "ogv", "mov", "mkv",
+	"pdf",
+	"md",
+	"canvas",
+	"base",
+]);
+
+/**
+ * Mirrors the native file explorer visibility rule: show everything when
+ * "Detect all file extensions" is enabled, otherwise only extensions with a
+ * registered view (md/media/pdf/canvas/base plus plugin-registered types).
+ */
+export function isFileShown(app: App, file: TFile): boolean {
+	const vault = app.vault as VaultWithConfig;
+	if (vault.getConfig?.("showUnsupportedFiles")) return true;
+	const registry = (app as unknown as { viewRegistry?: ViewRegistryLike }).viewRegistry;
+	if (typeof registry?.isExtensionRegistered === "function") {
+		return registry.isExtensionRegistered(file.extension);
+	}
+	return SHOWN_EXTENSIONS.has(file.extension.toLowerCase());
+}
 export async function createFile(app: App, dirPath: string, name: string, kind: NewFileKind = "md"): Promise<string> {
 	let fullName = name.trim();
 	if (!fullName) throw new Error("Name cannot be empty");
