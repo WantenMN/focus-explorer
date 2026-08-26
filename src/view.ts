@@ -615,7 +615,19 @@ removeBtn.addEventListener("click", (e) => {
 
 		this.registerDomEvent(document, "pointerdown", (e: PointerEvent) => {
 			const target = e.target as Node | null;
-			if (!target || !this.focusBarEl?.contains(target)) {
+			if (!target) {
+				this.closeFocusDropdown();
+				return;
+			}
+
+			const bar = this.focusBarEl;
+			if (bar && !bar.contains(target)) {
+				this.closeFocusDropdown();
+				return;
+			}
+
+			const row = (target as HTMLElement).closest?.(".focus-dropdown-item");
+			if (!row && target !== this.focusInputEl) {
 				this.closeFocusDropdown();
 			}
 		});
