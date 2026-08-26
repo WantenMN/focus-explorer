@@ -26,15 +26,6 @@ export function basename(p: string): string {
 	return norm.substring(idx + 1);
 }
 
-const SUPPORTED_EXTENSIONS = new Set([".md", ".canvas", ".base"]);
-
-export function isSupportedFile(name: string): boolean {
-	const dot = name.lastIndexOf(".");
-	if (dot === -1) return false;
-	const ext = name.substring(dot).toLowerCase();
-	return SUPPORTED_EXTENSIONS.has(ext);
-}
-
 export function buildEntries(
 	app: App,
 	expandedPaths: Set<string>,
@@ -169,18 +160,57 @@ export async function renameItem(app: App, oldPath: string, newName: string): Pr
 	const isDir = file instanceof TFolder;
 	let finalName = newName.trim();
 	if (!finalName) throw new Error("Name cannot be empty");
-	if (!isDir) {
 
-
-		const withoutExt = finalName.replace(/\.md$/, "");
-		finalName = `${withoutExt}.md`;
+	const oldNorm = normalizePath(oldPath);
+	const oldBase = basename(oldPath);
+	const dotIdx = oldBase.lastIndexOf(".");
+	const oldExt = !isDir && dotIdx > 0 ? oldBase.slice(dotIdx) : "";
+	if (oldExt) {
+		const lower = finalName.toLowerCase();
+		const extLower = oldExt.toLowerCase();
+		if (lower.endsWith(extLower)) finalName = finalName.slice(0, -oldExt.length);
 	}
+	finalName = `${finalName}${oldExt}`;
+
 	const par = parentPath(oldPath);
 	const newPath = par ? `${par}/${finalName}` : finalName;
-	if (oldPath === newPath) return normalizePath(newPath);
+	if (oldPath === newPath || oldNorm === normalizePath(newPath)) return normalizePath(newPath);
 	if (app.vault.getAbstractFileByPath(newPath)) throw new Error(`Target already exists: ${newPath}`);
 	await app.vault.rename(file, newPath);
 	return normalizePath(newPath);
+}
+
+function buildPath(dir: string, name: string): string {
+	const normalizedDir = normalizePath(dir);
+	return normalizedDir ? `${normalizedDir}/${name}` : name;
+}
+
+function findAvailablePath(app: App, dir: string, desiredName: string): string {
+	let candidate = buildPath(dir, desiredName);
+	if (!app.vault.getAbstractFileByPath(candidate)) return normalizePath(candidate);
+
+	const dotIdx = desiredName.lastIndexOf(".");
+	const stem = dotIdx > 0 ? desiredName.slice(0, dotIdx) : desiredName;
+	const ext = dotIdx > 0 ? desiredName.slice(dotIdx) : "";
+	let counter = 1;
+	for (;;) {
+		counter++;
+		candidate = buildPath(dir, `${stem} ${counter}${ext}`);
+		if (!app.vault.getAbstractFileByPath(candidate)) break;
+	}
+	return normalizePath(candidate);
+}
+
+async function cloneFolderInto(app: App, srcFolder: TFolder, destPath: string): Promise<void> {
+	for (const child of srcFolder.children) {
+		const childDest = `${destPath}/${child.name}`;
+		if (child instanceof TFile) {
+			await app.vault.createBinary(childDest, await app.vault.readBinary(child));
+		} else if (child instanceof TFolder) {
+			await app.vault.createFolder(childDest);
+			await cloneFolderInto(app, child, childDest);
+		}
+	}
 }
 
 export async function duplicateItem(app: App, path: string): Promise<string> {
@@ -190,43 +220,17 @@ export async function duplicateItem(app: App, path: string): Promise<string> {
 	const base = basename(path);
 	const isDir = file instanceof TFolder;
 
-	function generateDuplicateName(baseName: string, isDir: boolean): string {
-		const dotIdx = baseName.lastIndexOf(".");
-		const nameWithoutExt = isDir ? baseName : dotIdx !== -1 ? baseName.substring(0, dotIdx) : baseName;
-		const ext = isDir ? "" : dotIdx !== -1 ? baseName.substring(dotIdx) : ".md";
+	const dotIdx = base.lastIndexOf(".");
+	const nameWithoutExt = isDir ? base : dotIdx !== -1 ? base.slice(0, dotIdx) : base;
+	const ext = isDir ? "" : dotIdx !== -1 ? base.slice(dotIdx) : ".md";
+	const newPath = findAvailablePath(app, par, `${nameWithoutExt} copy${ext}`);
 
-		let candidate = `${nameWithoutExt} copy${ext}`;
-		let counter = 2;
-		let candidatePath = par ? `${par}/${candidate}` : candidate;
-		while (app.vault.getAbstractFileByPath(candidatePath)) {
-			candidate = `${nameWithoutExt} copy ${counter}${ext}`;
-			candidatePath = par ? `${par}/${candidate}` : candidate;
-			counter++;
-		}
-		return candidatePath;
-	}
-
-	const newPath = generateDuplicateName(base, isDir);
 	if (file instanceof TFile) {
-		const content = await app.vault.read(file);
-		await app.vault.create(newPath, content);
+		await app.vault.createBinary(newPath, await app.vault.readBinary(file));
 		return normalizePath(newPath);
 	} else if (file instanceof TFolder) {
-
 		await app.vault.createFolder(newPath);
-		async function copyRecursively(srcFolder: TFolder, destPath: string) {
-			for (const child of srcFolder.children) {
-				const childDest = `${destPath}/${child.name}`;
-				if (child instanceof TFile) {
-					const content = await app.vault.read(child);
-					await app.vault.create(childDest, content);
-				} else if (child instanceof TFolder) {
-					await app.vault.createFolder(childDest);
-					await copyRecursively(child, childDest);
-				}
-			}
-		}
-		await copyRecursively(file, newPath);
+		await cloneFolderInto(app, file, newPath);
 		return normalizePath(newPath);
 	}
 	throw new Error("Unknown file type");
@@ -252,67 +256,14 @@ export async function copyItem(app: App, oldPath: string, targetDir: string): Pr
 	const file = app.vault.getAbstractFileByPath(oldPath);
 	if (!file) throw new Error(`File not found: ${oldPath}`);
 	const base = basename(oldPath);
-	const normalizedTarget = normalizePath(targetDir);
-	let newPath = normalizedTarget ? `${normalizedTarget}/${base}` : base;
+	const newPath = findAvailablePath(app, targetDir, base);
 
-	if (app.vault.getAbstractFileByPath(newPath)) {
-		const dupPath = await duplicateItem(app, oldPath);
-
-
-		const existingDup = app.vault.getAbstractFileByPath(dupPath);
-		if (existingDup) {
-
-			const dupBase = basename(dupPath);
-			const finalPath = normalizedTarget ? `${normalizedTarget}/${dupBase}` : dupBase;
-			if (normalizePath(dupPath) !== normalizePath(finalPath)) {
-				await app.vault.rename(existingDup, finalPath);
-				return normalizePath(finalPath);
-			}
-			return normalizePath(dupPath);
-		}
-	}
 	if (file instanceof TFile) {
-		if (app.vault.getAbstractFileByPath(newPath)) {
-
-			const par = normalizedTarget;
-			let counter = 1;
-			const dotIdx = base.lastIndexOf(".");
-			const nameWithoutExt = dotIdx !== -1 ? base.substring(0, dotIdx) : base;
-			const ext = dotIdx !== -1 ? base.substring(dotIdx) : "";
-			while (app.vault.getAbstractFileByPath(newPath)) {
-				const candidate = `${nameWithoutExt} copy${counter > 1 ? ` ${counter}` : ""}${ext}`;
-				newPath = par ? `${par}/${candidate}` : candidate;
-				counter++;
-			}
-		}
-		await app.vault.create(newPath, await app.vault.read(file));
+		await app.vault.createBinary(newPath, await app.vault.readBinary(file));
 		return normalizePath(newPath);
 	} else if (file instanceof TFolder) {
-
-		if (app.vault.getAbstractFileByPath(newPath)) {
-			const par = normalizedTarget;
-			let counter = 1;
-			let candidate = base;
-			while (app.vault.getAbstractFileByPath(newPath)) {
-				candidate = `${base} copy${counter > 1 ? ` ${counter}` : ""}`;
-				newPath = par ? `${par}/${candidate}` : candidate;
-				counter++;
-			}
-		}
 		await app.vault.createFolder(newPath);
-		async function copyRecursively(srcFolder: TFolder, destPath: string) {
-			for (const child of srcFolder.children) {
-				const childDest = `${destPath}/${child.name}`;
-				if (child instanceof TFile) {
-					const content = await app.vault.read(child);
-					await app.vault.create(childDest, content);
-				} else if (child instanceof TFolder) {
-					await app.vault.createFolder(childDest);
-					await copyRecursively(child, childDest);
-				}
-			}
-		}
-		await copyRecursively(file, newPath);
+		await cloneFolderInto(app, file, newPath);
 		return normalizePath(newPath);
 	}
 	throw new Error("Unknown type");
