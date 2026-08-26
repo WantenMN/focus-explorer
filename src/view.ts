@@ -783,7 +783,7 @@ removeBtn.addEventListener("click", (e) => {
 			return btn;
 		};
 
-		makeBtn("file-plus", "New file", () => this.startCreate("file"));
+		makeBtn("file-plus", "New file", () => this.startCreate("file", { followVaultSettings: true }));
 		makeBtn("folder-plus", "New folder", () => this.startCreate("folder"));
 		makeBtn("list-tree", "Auto reveal", () => {
 			this.plugin.settings.autoReveal = !this.plugin.settings.autoReveal;
@@ -1088,52 +1088,55 @@ removeBtn.addEventListener("click", (e) => {
 		}
 	}
 
-	private startCreate(type: "file" | "folder", entry?: FileExplorerEntry) {
+	private getDefaultNewNoteLocation(): string {
+		const vault = this.app.vault as unknown as {
+			getConfig?: (key: string) => string | undefined;
+		};
+		const location = vault.getConfig?.("newFileLocation");
+		if (location === "folder") {
+			return normalizePath(vault.getConfig?.("newFileFolderPath") ?? "");
+		}
+		if (location === "current") {
+			const activeFile = this.app.workspace.getActiveFile();
+			if (activeFile) return parentPath(activeFile.path);
+		}
+		return "";
+	}
+
+	private startCreate(
+		type: "file" | "folder",
+		opts: { entry?: FileExplorerEntry; followVaultSettings?: boolean } = {},
+	) {
 		let parentPathStr = "";
 		let depth = 0;
 
-		let targetEntry: FileExplorerEntry | undefined = entry;
-		if (!targetEntry) {
-			const idx = this.entries.findIndex((e) => e.path === this.focusedPath);
-			if (idx !== -1) targetEntry = this.entries[idx];
-		}
-
-		if (targetEntry) {
-			if (targetEntry.is_dir) {
-				parentPathStr = normalizePath(targetEntry.path);
-				depth = targetEntry.depth + 1;
-			} else {
-				const p = normalizePath(targetEntry.path);
-				const lastSlash = p.lastIndexOf("/");
-				if (lastSlash !== -1) parentPathStr = p.substring(0, lastSlash);
-				else parentPathStr = "";
-				depth = targetEntry.depth;
-			}
-		} else {
-			if (this.focusedFolderPath) {
-				parentPathStr = this.focusedFolderPath;
-			} else {
-				const vault = this.app.vault as unknown as {
-					getConfig?: (key: string) => string | undefined;
-				};
-				const location = vault.getConfig?.("newFileLocation");
-				if (location === "folder") {
-					const folderPath = vault.getConfig?.("newFileFolderPath");
-					if (folderPath) {
-						parentPathStr = normalizePath(folderPath);
-					}
-				} else if (location === "current") {
-					const activeFile = this.app.workspace.getActiveFile();
-					if (activeFile) {
-						parentPathStr = parentPath(activeFile.path);
-					}
-				}
-			}
-
-			if (!parentPathStr) {
-				parentPathStr = "";
-			}
+		if (opts.followVaultSettings && type === "file") {
+			parentPathStr = this.getDefaultNewNoteLocation();
 			depth = parentPathStr ? 1 : 0;
+		} else {
+			let targetEntry: FileExplorerEntry | undefined = opts.entry;
+			if (!targetEntry) {
+				const idx = this.entries.findIndex((e) => e.path === this.focusedPath);
+				if (idx !== -1) targetEntry = this.entries[idx];
+			}
+
+			if (targetEntry) {
+				if (targetEntry.is_dir) {
+					parentPathStr = normalizePath(targetEntry.path);
+					depth = targetEntry.depth + 1;
+				} else {
+					const p = normalizePath(targetEntry.path);
+					const lastSlash = p.lastIndexOf("/");
+					if (lastSlash !== -1) parentPathStr = p.substring(0, lastSlash);
+					else parentPathStr = "";
+					depth = targetEntry.depth;
+				}
+			} else {
+				if (this.focusedFolderPath) {
+					parentPathStr = this.focusedFolderPath;
+				}
+				depth = parentPathStr ? 1 : 0;
+			}
 		}
 
 		if (parentPathStr && !this.expandedPaths.has(parentPathStr)) {
@@ -1154,7 +1157,7 @@ removeBtn.addEventListener("click", (e) => {
 		this.isHeaderExpanded = true;
 		void this.refresh().then(() => {
 
-			let insertIndex = this.entries.length;
+			let insertIndex = parentPathStr ? this.entries.length : 0;
 			if (parentPathStr) {
 				const idx = this.entries.findIndex((e) => normalizePath(e.path) === parentPathStr);
 				if (idx !== -1) {
@@ -1507,10 +1510,10 @@ removeBtn.addEventListener("click", (e) => {
 
 		if (isFolder || isEmpty) {
 			menu.addItem((item) =>
-				item.setTitle("New file").setIcon("file-plus").onClick(() => this.startCreate("file", entry)),
+				item.setTitle("New file").setIcon("file-plus").onClick(() => this.startCreate("file", { entry })),
 			);
 			menu.addItem((item) =>
-				item.setTitle("New folder").setIcon("folder-plus").onClick(() => this.startCreate("folder", entry)),
+				item.setTitle("New folder").setIcon("folder-plus").onClick(() => this.startCreate("folder", { entry })),
 			);
 			menu.addSeparator();
 		}
