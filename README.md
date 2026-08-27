@@ -4,32 +4,28 @@ An Obsidian file explorer with **folder focus** at its core.
 
 ## Folder focus
 
-Right-click any folder → **Focus** to show only that folder's subtree. Everything outside it is hidden, so you can work on one area of your vault without distraction.
+Right-click any folder → **Focus** to show only that folder's subtree. Everything outside it is hidden, so you can work on one area of your vault without distraction. Great for large vaults, per-project workflows, or when attachments and archives keep drowning out the notes you actually care about.
 
-- **Focus bar** (always visible at the top): `Focus:` plus a search input.
-  - Click the input to open a folder list (parents → children), type to fuzzy-search the whole vault, click or press Enter to focus.
-  - Clear button empties the search and re-lists all folders.
-  - History button shows recently focused folders for instant re-focus; each entry can be removed individually.
-  - Close button exits focus mode.
-- **Focus state** is persisted across restarts, and follows renames/deletions automatically.
-- Focused files and folders are created directly inside the focused folder (ignores Obsidian's new-file location setting while focused).
+### Choosing a folder to focus
 
-## File tree
+Three ways to pick the target, all from the focus bar at the top of the view:
 
-- Tree view with indentation guides and expand/collapse chevrons, folders first.
-- **New file / New folder** inline input at the correct position and depth.
-- **Rename** (`F2`), **Duplicate**, **Delete** (trash with confirmation).
-- **Copy / Cut / Paste** with multi-select support.
-- **Drag & drop** with hover-to-expand, auto-scroll, and a drop range indicator.
-- **Selection**: single click, `Ctrl/Cmd` toggle, `Shift` range.
-- **Auto reveal** the active file (header toggle).
-- **Keyboard**: `F2`, `Delete`, `Ctrl/Cmd+C/X/V`, arrow keys, `Enter`.
-- Shows only supported file types: `.md`, `.canvas`, `.base`.
-- Middle-click a file to open it in a new tab.
+- **Search input** — click it (or just start typing) to list every folder in the vault with a fuzzy filter as you type; matches jump straight into parents/children hierarchies. Click a row or press Enter to focus it.
+- **Recent history** — the clock button lists recently focused folders for one-click re-focus. Entries you no longer need can be removed individually right inside the menu.
+- **Context menu** — right-click any folder in the tree → Focus, or use Clear focus on empty areas / the same menu.
 
-## Context menu
+The clear (`×`) button exits focus mode and restores your previous expansion state exactly as it was.
 
-New file / New folder, Focus / Clear focus, Expand all, Rename, Duplicate, Copy path (relative/absolute), Show in system explorer, Copy / Cut / Paste, Delete.
+### What focus mode does
+
+- Only the focused subtree is rendered; expanding folders never leaks content from outside it.
+- Creation lands inside the focused folder: New note / New base / New canvas via the context menu go to the focused root, while header buttons still follow Obsidian's new-note location setting.
+- Search, drag & drop targets, and auto-reveal all respect the focus boundary — dragging a file onto empty space moves it into the focused folder instead of the vault root.
+- Focus state is persisted across restarts and follows folder renames automatically.
+
+## File tree essentials
+
+Beyond focus, this is a full explorer: indentation guides and expand/collapse chevrons (folders first), inline creation at the correct position and depth, rename (`F2`) that preserves each file's extension, duplicate, delete-to-trash with confirmation, copy/cut/paste and drag & drop with multi-select support, keyboard navigation (arrows / Enter / F2 / Delete), middle-click to open in a new tab, and an auto-reveal toggle that keeps the tree synced with the active editor file.
 
 ## License
 
