@@ -7,6 +7,7 @@ import {
 	TFile,
 	TFolder,
 	setIcon,
+	Platform,
 } from "obsidian";
 import FocusExplorerPlugin from "./main";
 import { FileExplorerEntry } from "./explorer/types";
@@ -1718,6 +1719,11 @@ removeBtn.addEventListener("click", (e) => {
 		if (!leaf) leaf = this.app.workspace.getLeaf(true);
 		await leaf.openFile(file);
 		void this.app.workspace.revealLeaf(leaf);
+
+		if (Platform.isMobile) {
+			this.app.workspace.leftSplit.collapse();
+			return;
+		}
 
 		if (opts?.focusEditor && file.extension === "md") {
 			const view = leaf.view as { editor?: { focus: () => void } };

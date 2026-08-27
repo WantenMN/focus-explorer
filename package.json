@@ -1,6 +1,6 @@
 {
 	"name": "focus-explorer",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Folder focus file explorer for Obsidian.",
 	"main": "main.js",
 	"type": "module",

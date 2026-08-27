@@ -1,7 +1,7 @@
 {
 	"id": "focus-explorer",
 	"name": "Focus Explorer",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "1.13.0",
 	"description": "A file explorer with folder focus.",
 	"author": "WantenMN",
