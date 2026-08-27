@@ -648,6 +648,7 @@ removeBtn.addEventListener("click", (e) => {
 			});
 			this.registerDomEvent(this.scrollContainer, "blur", () => {
 				window.setTimeout(() => {
+					if (document.querySelector(".focus-explorer-modal-overlay")) return;
 					if (!this.contentEl.contains(document.activeElement)) {
 						this.isActive = false;
 						this.renderHeader();
@@ -1110,7 +1111,7 @@ removeBtn.addEventListener("click", (e) => {
 			}
 			await this.refresh();
 			if (type === "file") {
-				await this.openFile(newPath);
+				await this.openFile(newPath, { focusEditor: true });
 				this.focusedPath = newPath;
 				this.selectedPaths = new Set([newPath]);
 				this.anchorPath = newPath;
@@ -1151,9 +1152,15 @@ removeBtn.addEventListener("click", (e) => {
 		let depth = 0;
 
 		if (opts.followVaultSettings && type === "file") {
-			parentPathStr = this.getDefaultNewNoteLocation();
-			if (parentPathStr && !(this.app.vault.getAbstractFileByPath(parentPathStr) instanceof TFolder)) {
-				parentPathStr = "";
+			const focused = this.focusedFolderPath ? normalizePath(this.focusedFolderPath) : "";
+			const settingsPath = this.getDefaultNewNoteLocation();
+			if (focused && (!settingsPath || settingsPath !== focused)) {
+				parentPathStr = focused;
+			} else {
+				parentPathStr = settingsPath;
+				if (parentPathStr && !(this.app.vault.getAbstractFileByPath(parentPathStr) instanceof TFolder)) {
+					parentPathStr = "";
+				}
 			}
 			depth = parentPathStr ? 1 : 0;
 		} else {
@@ -1332,21 +1339,49 @@ removeBtn.addEventListener("click", (e) => {
 			const btnRow = box.createDiv({ cls: "focus-explorer-modal-btns" });
 			const cancelBtn = btnRow.createEl("button", { text: "Cancel" });
 			const delBtn = btnRow.createEl("button", { text: "Delete", cls: "mod-warning" });
-			cancelBtn.addEventListener("click", () => {
-				modal.remove();
-				resolve(false);
-			});
-			delBtn.addEventListener("click", () => {
-				modal.remove();
-				resolve(true);
-			});
 			modal.addEventListener("click", (e) => {
 				if (e.target === modal) {
 					modal.remove();
 					resolve(false);
 				}
 			});
+			const finish = (confirmed: boolean) => {
+				modal.remove();
+				document.removeEventListener("keydown", onKey, true);
+				this.isActive = true;
+				this.scrollContainer?.focus();
+				resolve(confirmed);
+			};
+			const onKey = (e: KeyboardEvent) => {
+				const buttons = [cancelBtn, delBtn];
+				if (e.key === "Enter") {
+					e.preventDefault();
+					e.stopPropagation();
+					finish(true);
+					return;
+				}
+				if (e.key === "Escape") {
+					e.preventDefault();
+					e.stopPropagation();
+					finish(false);
+					return;
+				}
+				if (e.key === "Tab" || e.key === "ArrowLeft" || e.key === "ArrowRight") {
+					e.preventDefault();
+					e.stopPropagation();
+					const active = document.activeElement;
+					let idx = buttons.indexOf(active as HTMLButtonElement);
+					idx = idx === -1 ? 0 : idx + (e.key === "ArrowLeft" || (e.key === "Tab" && e.shiftKey) ? -1 : 1);
+					const next = buttons[(idx + buttons.length) % buttons.length] ?? delBtn;
+					next.focus();
+					return;
+				}
+			};
+			cancelBtn.addEventListener("click", () => finish(false));
+			delBtn.addEventListener("click", () => finish(true));
 			document.body.appendChild(modal);
+			delBtn.focus();
+			document.addEventListener("keydown", onKey, true);
 
 		});
 	}
@@ -1663,7 +1698,7 @@ removeBtn.addEventListener("click", (e) => {
 		menu.showAtMouseEvent(e);
 	}
 
-	private async openFile(path: string) {
+	private async openFile(path: string, opts?: { focusEditor?: boolean }) {
 		const file = this.app.vault.getAbstractFileByPath(path);
 		if (!(file instanceof TFile)) {
 			new Notice(`Not a file: ${path}`);
@@ -1684,14 +1719,14 @@ removeBtn.addEventListener("click", (e) => {
 		await leaf.openFile(file);
 		void this.app.workspace.revealLeaf(leaf);
 
-		if (file.extension === "md") {
+		if (opts?.focusEditor && file.extension === "md") {
 			const view = leaf.view as { editor?: { focus: () => void } };
 			if (view?.editor) {
 				view.editor.focus();
 			} else {
 				window.setTimeout(() => {
 					const v = leaf.view as { editor?: { focus: () => void } };
-					if (v?.editor) v.editor.focus();
+					v?.editor?.focus();
 				}, 50);
 			}
 		}
@@ -1703,17 +1738,6 @@ removeBtn.addEventListener("click", (e) => {
 		const leaf = this.app.workspace.getLeaf(true);
 		await leaf.openFile(file);
 		void this.app.workspace.revealLeaf(leaf);
-		if (file.extension === "md") {
-			const view = leaf.view as { editor?: { focus: () => void } };
-			if (view?.editor) {
-				view.editor.focus();
-			} else {
-				window.setTimeout(() => {
-					const v = leaf.view as { editor?: { focus: () => void } };
-					if (v?.editor) v.editor.focus();
-				}, 50);
-			}
-		}
 	}
 
 	focusTree(): void {
