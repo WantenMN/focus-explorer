@@ -1,7 +1,7 @@
 {
 	"id": "focus-explorer",
 	"name": "Focus Explorer",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"minAppVersion": "1.13.0",
 	"description": "An Obsidian file explorer with folder focus.",
 	"author": "WantenMN",

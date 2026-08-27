@@ -1,5 +1,7 @@
 # Focus Explorer
 
+![Focus Explorer](demo.gif)
+
 An Obsidian file explorer with **folder focus** at its core.
 
 ## Folder focus
