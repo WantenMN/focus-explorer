@@ -3,9 +3,8 @@
 	"name": "Focus Explorer",
 	"version": "1.0.0",
 	"minAppVersion": "1.13.0",
-	"description": "An Obsidian file explorer with folder focus.",
+	"description": "A file explorer with folder focus.",
 	"author": "WantenMN",
 	"authorUrl": "https://github.com/WantenMN",
-	"license": "AGPL-3.0",
 	"isDesktopOnly": false
 }

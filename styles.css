@@ -13,9 +13,9 @@ body.focus-explorer-dragging {
 	color: var(--text-normal);
 }
 
-.focus-explorer-container {
+.workspace-leaf-content .focus-explorer-container {
 	outline: none;
-	padding: 0 !important;
+	padding: 0;
 }
 
 .focus-explorer-header {

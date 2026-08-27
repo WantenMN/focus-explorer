@@ -29,6 +29,10 @@ The clear (`×`) button exits focus mode and restores your previous expansion st
 
 Beyond focus, this is a full explorer: indentation guides and expand/collapse chevrons (folders first), inline creation at the correct position and depth, rename (`F2`) that preserves each file's extension, duplicate, delete-to-trash with confirmation, copy/cut/paste and drag & drop with multi-select support, keyboard navigation (arrows / Enter / F2 / Delete), middle-click to open in a new tab, and an auto-reveal toggle that keeps the tree synced with the active editor file.
 
+## Installation
+
+Manual install: copy `main.js`, `manifest.json`, and `styles.css` into `VaultFolder/.obsidian/plugins/focus-explorer/`, reload Obsidian, and enable the plugin in **Settings → Community plugins**.
+
 ## License
 
 [AGPL-3.0](LICENSE)
