@@ -19,7 +19,7 @@ The clear (`×`) button exits focus mode and restores your previous expansion st
 ### What focus mode does
 
 - Only the focused subtree is rendered; expanding folders never leaks content from outside it.
-- Creation lands inside the focused folder: New note / New base / New canvas via the context menu go to the focused root, while header buttons still follow Obsidian's new-note location setting.
+- Creation lands inside the focused folder: New note / New base / New canvas always go to the focused root — even the header buttons skip Obsidian's new-note location setting while it points outside the focused subtree.
 - Search, drag & drop targets, and auto-reveal all respect the focus boundary — dragging a file onto empty space moves it into the focused folder instead of the vault root.
 - Focus state is persisted across restarts and follows folder renames automatically.
 
