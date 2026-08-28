@@ -435,7 +435,13 @@ removeBtn.addEventListener("click", (e) => {
 	}
 
 	private openFocusDropdown(): void {
-		this.focusDropdownSelected = 0;
+		const items = this.getFilteredFolders();
+		if (this.focusedFolderPath) {
+			const idx = items.findIndex((f) => f.path === this.focusedFolderPath);
+			this.focusDropdownSelected = idx !== -1 ? idx : 0;
+		} else {
+			this.focusDropdownSelected = 0;
+		}
 		if (!this.focusDropdownEl) return;
 		this.focusDropdownEl.show();
 		this.renderFocusDropdown();
@@ -456,14 +462,23 @@ removeBtn.addEventListener("click", (e) => {
 		const dropdown = this.focusDropdownEl;
 		if (!dropdown) return;
 		dropdown.empty();
-		const items = this.getFilteredFolders().slice(0, 200);
+		const filtered = this.getFilteredFolders();
+		let items: { name: string; path: string; depth: number }[];
+		let offset = 0;
+		if (filtered.length > 200 && this.focusDropdownSelected >= 200) {
+			offset = Math.min(this.focusDropdownSelected - 100, filtered.length - 200);
+			items = filtered.slice(offset, offset + 200);
+		} else {
+			items = filtered.slice(0, 200);
+		}
 		if (items.length === 0) {
 			dropdown.createDiv({ cls: "focus-dropdown-empty", text: "No folders found" });
 			return;
 		}
 		items.forEach((folder, idx) => {
+			const globalIdx = offset + idx;
 			const row = dropdown.createDiv({ cls: "focus-dropdown-item" });
-			if (idx === this.focusDropdownSelected) row.addClass("is-selected");
+			if (globalIdx === this.focusDropdownSelected) row.addClass("is-selected");
 			if (this.focusedFolderPath === folder.path) row.addClass("is-current");
 			row.style.paddingLeft = `${folder.depth * 12 + 8}px`;
 			const icon = row.createSpan({ cls: "focus-dropdown-item-icon" });
@@ -479,14 +494,24 @@ removeBtn.addEventListener("click", (e) => {
 				this.focusInputEl?.blur();
 			});
 			row.addEventListener("mouseenter", () => {
-				if (this.focusDropdownSelected === idx) return;
-				this.focusDropdownSelected = idx;
+				if (this.focusDropdownSelected === globalIdx) return;
+				this.focusDropdownSelected = globalIdx;
 
 				dropdown.querySelectorAll(".focus-dropdown-item").forEach((el, i) => {
 					el.toggleClass("is-selected", i === idx);
 				});
 			});
 		});
+		const selected = dropdown.querySelector<HTMLElement>(".focus-dropdown-item.is-selected");
+		if (selected) {
+			const top = selected.offsetTop;
+			const bottom = top + selected.offsetHeight;
+			const viewTop = dropdown.scrollTop;
+			const viewBottom = viewTop + dropdown.clientHeight;
+			if (top < viewTop || bottom > viewBottom) {
+				selected.scrollIntoView({ block: "center" });
+			}
+		}
 	}
 
 	private onVaultRenameForFocus(file: TAbstractFile, oldPath: string): void {
