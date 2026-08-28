@@ -73,6 +73,9 @@ private scrollContainer: HTMLElement | null = null;
 	private focusDropdownEl: HTMLElement | null = null;
 	private focusDropdownSelected = 0;
 	private folderTree: { name: string; path: string; depth: number }[] = [];
+	private focusDropdownVirtualRowHeight = 28;
+	private focusDropdownVirtualThreshold = 150;
+	private focusDropdownVirtualRaf: number | null = null;
 	private savedExpandedBeforeFocus: Set<string> | null = null;
 	private recentFocusPaths: string[] = [];
 
@@ -398,6 +401,15 @@ removeBtn.addEventListener("click", (e) => {
 		const dropdown = this.focusBarEl.createDiv({ cls: "focus-dropdown" });
 		this.focusDropdownEl = dropdown;
 		dropdown.hide();
+		dropdown.addEventListener("scroll", () => {
+			const items = this.getFilteredFolders();
+			if (items.length <= this.focusDropdownVirtualThreshold) return;
+			if (this.focusDropdownVirtualRaf !== null) return;
+			this.focusDropdownVirtualRaf = window.requestAnimationFrame(() => {
+				this.focusDropdownVirtualRaf = null;
+				this.renderFocusDropdownVirtualWindow();
+			});
+		});
 	}
 
 	private buildFolderTree(): { name: string; path: string; depth: number }[] {
@@ -461,24 +473,29 @@ removeBtn.addEventListener("click", (e) => {
 	private renderFocusDropdown(): void {
 		const dropdown = this.focusDropdownEl;
 		if (!dropdown) return;
-		dropdown.empty();
-		const filtered = this.getFilteredFolders();
-		let items: { name: string; path: string; depth: number }[];
-		let offset = 0;
-		if (filtered.length > 200 && this.focusDropdownSelected >= 200) {
-			offset = Math.min(this.focusDropdownSelected - 100, filtered.length - 200);
-			items = filtered.slice(offset, offset + 200);
-		} else {
-			items = filtered.slice(0, 200);
-		}
+		const items = this.getFilteredFolders();
 		if (items.length === 0) {
+			dropdown.empty();
 			dropdown.createDiv({ cls: "focus-dropdown-empty", text: "No folders found" });
 			return;
 		}
+		if (items.length > this.focusDropdownVirtualThreshold) {
+			const ROW_HEIGHT = this.focusDropdownVirtualRowHeight;
+			const viewportHeight = dropdown.clientHeight || 320;
+			const selectedIdx = this.focusDropdownSelected;
+			const selectedTop = selectedIdx * ROW_HEIGHT;
+			const viewTop = dropdown.scrollTop;
+			const viewBottom = viewTop + viewportHeight;
+			if (selectedTop < viewTop || selectedTop + ROW_HEIGHT > viewBottom) {
+				dropdown.scrollTop = Math.max(0, selectedTop - viewportHeight / 2 + ROW_HEIGHT / 2);
+			}
+			this.renderFocusDropdownVirtualWindow();
+			return;
+		}
+		dropdown.empty();
 		items.forEach((folder, idx) => {
-			const globalIdx = offset + idx;
 			const row = dropdown.createDiv({ cls: "focus-dropdown-item" });
-			if (globalIdx === this.focusDropdownSelected) row.addClass("is-selected");
+			if (idx === this.focusDropdownSelected) row.addClass("is-selected");
 			if (this.focusedFolderPath === folder.path) row.addClass("is-current");
 			row.style.paddingLeft = `${folder.depth * 12 + 8}px`;
 			const icon = row.createSpan({ cls: "focus-dropdown-item-icon" });
@@ -494,8 +511,8 @@ removeBtn.addEventListener("click", (e) => {
 				this.focusInputEl?.blur();
 			});
 			row.addEventListener("mouseenter", () => {
-				if (this.focusDropdownSelected === globalIdx) return;
-				this.focusDropdownSelected = globalIdx;
+				if (this.focusDropdownSelected === idx) return;
+				this.focusDropdownSelected = idx;
 
 				dropdown.querySelectorAll(".focus-dropdown-item").forEach((el, i) => {
 					el.toggleClass("is-selected", i === idx);
@@ -510,6 +527,71 @@ removeBtn.addEventListener("click", (e) => {
 			const viewBottom = viewTop + dropdown.clientHeight;
 			if (top < viewTop || bottom > viewBottom) {
 				selected.scrollIntoView({ block: "center" });
+			}
+		}
+	}
+
+	private renderFocusDropdownVirtualWindow(): void {
+		const dropdown = this.focusDropdownEl;
+		if (!dropdown) return;
+		const items = this.getFilteredFolders();
+		if (items.length <= this.focusDropdownVirtualThreshold) return;
+		const ROW_HEIGHT = this.focusDropdownVirtualRowHeight;
+		const scrollTop = dropdown.scrollTop;
+		const viewportHeight = dropdown.clientHeight || 320;
+		const buffer = 10;
+		const visibleCount = Math.ceil(viewportHeight / ROW_HEIGHT) + buffer * 2;
+		let start = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - buffer);
+		let end = Math.min(items.length, start + visibleCount);
+		if (end - start < visibleCount && start > 0) {
+			start = Math.max(0, end - visibleCount);
+		}
+		dropdown.empty();
+		const topHeight = start * ROW_HEIGHT;
+		if (topHeight > 0) {
+			const topSpacer = dropdown.createDiv({ cls: "focus-dropdown-spacer" });
+			topSpacer.setCssProps({ height: `${topHeight}px` });
+		}
+		for (let idx = start; idx < end; idx++) {
+			const folder = items[idx];
+			if (!folder) continue;
+			const row = dropdown.createDiv({ cls: "focus-dropdown-item" });
+			if (idx === this.focusDropdownSelected) row.addClass("is-selected");
+			if (this.focusedFolderPath === folder.path) row.addClass("is-current");
+			row.style.paddingLeft = `${folder.depth * 12 + 8}px`;
+			const icon = row.createSpan({ cls: "focus-dropdown-item-icon" });
+			setIcon(icon, this.focusedFolderPath === folder.path ? "target" : "folder");
+			row.createSpan({ cls: "focus-dropdown-item-name", text: folder.name });
+			row.createSpan({ cls: "focus-dropdown-item-path", text: folder.path });
+			row.addEventListener("mousedown", (e) => {
+				e.preventDefault();
+			});
+			row.addEventListener("click", () => {
+				void this.focusOn(folder.path);
+				this.closeFocusDropdown();
+				this.focusInputEl?.blur();
+			});
+			row.addEventListener("mouseenter", () => {
+				if (this.focusDropdownSelected === idx) return;
+				this.focusDropdownSelected = idx;
+				dropdown.querySelectorAll(".focus-dropdown-item").forEach((el, i) => {
+					const globalIdx = start + i;
+					// skip spacers: they are not items
+					if (el.hasClass("focus-dropdown-spacer") || el.hasClass("focus-dropdown-empty")) return;
+					el.toggleClass("is-selected", globalIdx === idx);
+				});
+			});
+		}
+		const bottomHeight = (items.length - end) * ROW_HEIGHT;
+		if (bottomHeight > 0) {
+			const bottomSpacer = dropdown.createDiv({ cls: "focus-dropdown-spacer" });
+			bottomSpacer.setCssProps({ height: `${bottomHeight}px` });
+		}
+		const first = dropdown.querySelector<HTMLElement>(".focus-dropdown-item");
+		if (first) {
+			const h = first.offsetHeight;
+			if (h && Math.abs(h - ROW_HEIGHT) > 1) {
+				this.focusDropdownVirtualRowHeight = h;
 			}
 		}
 	}
