@@ -472,6 +472,8 @@ removeBtn.addEventListener("click", (e) => {
 			row.createSpan({ cls: "focus-dropdown-item-path", text: folder.path });
 			row.addEventListener("mousedown", (e) => {
 				e.preventDefault();
+			});
+			row.addEventListener("click", () => {
 				void this.focusOn(folder.path);
 				this.closeFocusDropdown();
 				this.focusInputEl?.blur();
@@ -624,6 +626,10 @@ removeBtn.addEventListener("click", (e) => {
 			const bar = this.focusBarEl;
 			if (bar && !bar.contains(target)) {
 				this.closeFocusDropdown();
+				return;
+			}
+
+			if (this.focusDropdownEl?.contains(target)) {
 				return;
 			}
 
