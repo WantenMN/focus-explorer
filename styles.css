@@ -9,7 +9,7 @@ body.focus-explorer-dragging {
 	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
-	background-color: var(--background-primary);
+	background-color: var(--background-secondary);
 	color: var(--text-normal);
 }
 
@@ -45,9 +45,14 @@ body.focus-explorer-dragging {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: var(--size-2-1) var(--size-2-2);
-	min-width: calc(var(--icon-m, 18px) + var(--size-2-3));
-	min-height: calc(var(--icon-m, 18px) + var(--size-2-1));
+	padding: 0;
+	width: calc(var(--icon-m, 18px) + var(--size-2-2) * 2);
+	height: calc(var(--icon-m, 18px) + var(--size-2-2) * 2);
+	min-width: calc(var(--icon-m, 18px) + var(--size-2-2) * 2);
+	min-height: calc(var(--icon-m, 18px) + var(--size-2-2) * 2);
+	aspect-ratio: 1;
+	box-sizing: border-box;
+	flex-shrink: 0;
 	border: none;
 	border-radius: var(--clickable-icon-radius, var(--radius-s));
 	background: transparent;
@@ -150,8 +155,8 @@ body.focus-explorer-dragging {
 	top: 0;
 	bottom: 0;
 	width: 1px;
-	background-color: var(--background-modifier-border);
-	opacity: 0.6;
+	background-color: var(--nav-indentation-guide-color, var(--background-modifier-border));
+	opacity: 0.85;
 }
 
 .focus-explorer-chevron {
@@ -208,7 +213,7 @@ body.focus-explorer-dragging {
 .focus-explorer-input {
 	flex: 1;
 	z-index: 2;
-	background-color: var(--background-primary);
+	background-color: var(--background-modifier-form-field);
 	border: 1px solid var(--interactive-accent);
 	border-radius: 3px;
 	padding: 1px 4px;
@@ -323,7 +328,7 @@ body.focus-explorer-dragging {
 	padding: var(--size-2-1) calc(var(--icon-xs, 14px) + var(--size-2-3)) var(--size-2-1) var(--size-2-3);
 	border-radius: var(--radius-s);
 	border: 1px solid var(--background-modifier-border);
-	background-color: var(--background-primary);
+	background-color: var(--background-modifier-form-field);
 	color: var(--text-normal);
 	font-size: var(--font-ui-small);
 	outline: none;
@@ -368,6 +373,12 @@ body.focus-explorer-dragging {
 	align-items: center;
 	justify-content: center;
 	padding: var(--size-2-1);
+	width: calc(var(--icon-s, 16px) + var(--size-2-1) * 2);
+	height: calc(var(--icon-s, 16px) + var(--size-2-1) * 2);
+	min-width: calc(var(--icon-s, 16px) + var(--size-2-1) * 2);
+	min-height: calc(var(--icon-s, 16px) + var(--size-2-1) * 2);
+	aspect-ratio: 1;
+	box-sizing: border-box;
 	flex-shrink: 0;
 	border-radius: var(--clickable-icon-radius, var(--radius-s));
 	cursor: pointer;
@@ -567,8 +578,14 @@ body.focus-explorer-dragging {
 
 .is-mobile .focus-bar-btn,
 .is-mobile .focus-explorer-header-btn {
+	width: var(--size-4-8);
+	height: var(--size-4-8);
 	min-width: var(--size-4-8);
 	min-height: var(--size-4-8);
+	padding: 0;
+	aspect-ratio: 1;
+	box-sizing: border-box;
+	flex-shrink: 0;
 	opacity: 1;
 }
 
@@ -577,8 +594,14 @@ body.focus-explorer-dragging {
 }
 
 .is-phone .focus-bar-btn {
+	width: var(--size-4-9);
+	height: var(--size-4-9);
 	min-width: var(--size-4-9);
 	min-height: var(--size-4-9);
+	padding: 0;
+	aspect-ratio: 1;
+	box-sizing: border-box;
+	flex-shrink: 0;
 }
 
 .is-phone .focus-bar-btn svg,
@@ -589,14 +612,25 @@ body.focus-explorer-dragging {
 }
 
 .is-phone .focus-explorer-header-btn {
+	width: calc(var(--icon-m, 18px) + var(--size-4-4));
+	height: calc(var(--icon-m, 18px) + var(--size-4-4));
 	min-width: calc(var(--icon-m, 18px) + var(--size-4-4));
 	min-height: calc(var(--icon-m, 18px) + var(--size-4-4));
+	padding: 0;
+	aspect-ratio: 1;
+	box-sizing: border-box;
+	flex-shrink: 0;
 }
 
 .is-phone .focus-bar-clear {
 	right: var(--size-2-1);
+	width: var(--size-4-6);
+	height: var(--size-4-6);
 	min-width: var(--size-4-6);
 	min-height: var(--size-4-6);
+	padding: 0;
+	aspect-ratio: 1;
+	box-sizing: border-box;
 }
 
 .is-phone .focus-bar-clear svg {
