@@ -447,6 +447,7 @@ removeBtn.addEventListener("click", (e) => {
 	}
 
 	private openFocusDropdown(): void {
+		this.folderTree = this.buildFolderTree();
 		const items = this.getFilteredFolders();
 		if (this.focusedFolderPath) {
 			const idx = items.findIndex((f) => f.path === this.focusedFolderPath);
@@ -457,6 +458,34 @@ removeBtn.addEventListener("click", (e) => {
 		if (!this.focusDropdownEl) return;
 		this.focusDropdownEl.show();
 		this.renderFocusDropdown();
+		requestAnimationFrame(() => {
+			const dropdown = this.focusDropdownEl;
+			if (!dropdown || dropdown.style.display === "none") return;
+			const filtered = this.getFilteredFolders();
+			if (filtered.length === 0) return;
+			if (filtered.length > this.focusDropdownVirtualThreshold) {
+				const ROW_HEIGHT = this.focusDropdownVirtualRowHeight;
+				const viewportHeight = dropdown.clientHeight || 320;
+				const selectedTop = this.focusDropdownSelected * ROW_HEIGHT;
+				const viewTop = dropdown.scrollTop;
+				const viewBottom = viewTop + viewportHeight;
+				if (selectedTop < viewTop || selectedTop + ROW_HEIGHT > viewBottom) {
+					dropdown.scrollTop = Math.max(0, selectedTop - viewportHeight / 2 + ROW_HEIGHT / 2);
+					this.renderFocusDropdownVirtualWindow();
+				}
+			} else {
+				const selected = dropdown.querySelector<HTMLElement>(".focus-dropdown-item.is-selected");
+				if (selected) {
+					const top = selected.offsetTop;
+					const bottom = top + selected.offsetHeight;
+					const viewTop2 = dropdown.scrollTop;
+					const viewBottom2 = viewTop2 + dropdown.clientHeight;
+					if (top < viewTop2 || bottom > viewBottom2) {
+						selected.scrollIntoView({ block: "center" });
+					}
+				}
+			}
+		});
 	}
 
 	private closeFocusDropdown(): void {
