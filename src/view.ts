@@ -1191,10 +1191,19 @@ removeBtn.addEventListener("click", (e) => {
 		});
 	}
 
-	private ensureFocusedVisible() {
+	private ensureFocusedVisible(center = false) {
 		if (!this.scrollContainer || !this.focusedPath) return;
-		const el = this.scrollContainer.querySelector(`[data-entry-path="${CSS.escape(this.focusedPath)}"]`);
-		if (el) {
+		const el = this.scrollContainer.querySelector<HTMLElement>(`[data-entry-path="${CSS.escape(this.focusedPath)}"]`);
+		if (!el) return;
+		if (center) {
+			const container = this.scrollContainer;
+			const cRect = container.getBoundingClientRect();
+			const eRect = el.getBoundingClientRect();
+			if (eRect.top >= cRect.top && eRect.bottom <= cRect.bottom) return;
+			const top = el.offsetTop;
+			const h = el.offsetHeight;
+			container.scrollTop = top - container.clientHeight / 2 + h / 2;
+		} else {
 			el.scrollIntoView({ block: "nearest" });
 		}
 	}
@@ -1918,7 +1927,7 @@ removeBtn.addEventListener("click", (e) => {
 		this.anchorPath = normalizedTarget;
 		this.isHeaderExpanded = true;
 		this.render();
-		this.ensureFocusedVisible();
+		this.ensureFocusedVisible(true);
 	}
 
 	private handleKeyDown(e: KeyboardEvent) {
