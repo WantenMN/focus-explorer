@@ -438,12 +438,34 @@ removeBtn.addEventListener("click", (e) => {
 		return qi === q.length;
 	}
 
+	private isExcludedFolder(path: string): boolean {
+		const norm = normalizePath(path);
+		if (!norm) return false;
+		const excluded = this.plugin.settings.excludedFolders ?? [];
+		for (const ex of excluded) {
+			const n = normalizePath(ex);
+			if (!n) continue;
+			if (norm === n || norm.startsWith(n + "/")) return true;
+		}
+		return false;
+	}
+
+	private shouldShowInDropdown(path: string): boolean {
+		if (!this.isExcludedFolder(path)) return true;
+		const focused = this.focusedFolderPath ? normalizePath(this.focusedFolderPath) : null;
+		if (!focused) return false;
+		const n = normalizePath(path);
+		if (n === focused) return true;
+		if (n.startsWith(focused + "/") && this.isExcludedFolder(focused)) return true;
+		if (focused.startsWith(n + "/")) return true;
+		return false;
+	}
+
 	private getFilteredFolders(): { name: string; path: string; depth: number }[] {
+		const visible = this.folderTree.filter((f) => this.shouldShowInDropdown(f.path));
 		const query = (this.focusInputEl?.value ?? "").trim().toLowerCase();
-		if (!query) return this.folderTree;
-		return this.folderTree.filter(
-			(f) => f.name.toLowerCase().includes(query) || this.fuzzyMatch(f.path, query),
-		);
+		if (!query) return visible;
+		return visible.filter((f) => f.name.toLowerCase().includes(query) || this.fuzzyMatch(f.path, query));
 	}
 
 	private openFocusDropdown(): void {

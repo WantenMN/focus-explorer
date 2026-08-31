@@ -1,6 +1,7 @@
-import { Plugin, WorkspaceLeaf } from "obsidian";
+import { App, Plugin, PluginSettingTab, TFolder, AbstractInputSuggest, WorkspaceLeaf } from "obsidian";
 import { FocusExplorerSettings, DEFAULT_SETTINGS, RECENT_FOCUS_LIMIT } from "./settings";
 import { FocusExplorerView, VIEW_TYPE_FOCUS_EXPLORER } from "./view";
+import { normalizePath } from "./explorer/vault-helpers";
 
 type PluginData = FocusExplorerSettings & { recentFocus?: unknown };
 
@@ -58,6 +59,8 @@ export default class FocusExplorerPlugin extends Plugin {
 			},
 		});
 
+		this.addSettingTab(new FocusExplorerSettingTab(this.app, this));
+
 		this.app.workspace.onLayoutReady(() => {
 			if (this.app.workspace.getLeavesOfType(VIEW_TYPE_FOCUS_EXPLORER).length === 0) {
 				void this.activateView();
@@ -87,6 +90,9 @@ export default class FocusExplorerPlugin extends Plugin {
 			: [];
 		this.settings = {
 			autoReveal: typeof data.autoReveal === "boolean" ? data.autoReveal : DEFAULT_SETTINGS.autoReveal,
+			excludedFolders: Array.isArray(data.excludedFolders)
+				? data.excludedFolders.filter((p): p is string => typeof p === "string").map((p) => normalizePath(p)).filter((p) => p.length > 0)
+				: [...DEFAULT_SETTINGS.excludedFolders],
 		};
 	}
 
@@ -107,4 +113,106 @@ export default class FocusExplorerPlugin extends Plugin {
 	}
 
 	onunload() {}
+}
+
+class FolderSuggest extends AbstractInputSuggest<string> {
+	private folders: string[];
+	private input: HTMLInputElement;
+	constructor(app: App, inputEl: HTMLInputElement) {
+		super(app, inputEl);
+		this.input = inputEl;
+		this.folders = FolderSuggest.getAllFolders(app);
+	}
+	static getAllFolders(app: App): string[] {
+		const result: string[] = [];
+		const walk = (folder: TFolder) => {
+			for (const child of folder.children) {
+				if (child instanceof TFolder) {
+					result.push(normalizePath(child.path));
+					walk(child);
+				}
+			}
+		};
+		walk(app.vault.getRoot());
+		result.sort((a, b) => a.localeCompare(b));
+		return result;
+	}
+	getSuggestions(query: string): string[] {
+		const q = query.toLowerCase();
+		if (!q) return this.folders.slice(0, 100);
+		return this.folders.filter((p) => p.toLowerCase().includes(q)).slice(0, 100);
+	}
+	renderSuggestion(value: string, el: HTMLElement): void {
+		el.createDiv({ text: value || "/" });
+	}
+	selectSuggestion(value: string): void {
+		this.input.value = value;
+		this.input.dispatchEvent(new Event("input"));
+		this.close();
+	}
+}
+
+class FocusExplorerSettingTab extends PluginSettingTab {
+	plugin: FocusExplorerPlugin;
+	constructor(app: App, plugin: FocusExplorerPlugin) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
+	getSettingDefinitions(): import("obsidian").SettingDefinitionItem[] {
+		return [
+			{
+				type: "page",
+				name: "Excluded folders",
+				desc: "Folders hidden from the focus search dropdown unless the folder itself is currently focused (via context menu or recent list), in which case the focused folder and all its subfolders will be shown.",
+				items: [
+					{
+						name: "Add excluded folder",
+						render: (setting) => {
+							const input = setting.controlEl.createEl("input", {
+								attr: { placeholder: "Folder path", type: "text" },
+								cls: "focus-explorer-excluded-input",
+							});
+							const suggest = new FolderSuggest(this.app, input);
+							const origSelect = suggest.selectSuggestion.bind(suggest);
+							suggest.selectSuggestion = (value: string) => {
+								origSelect(value);
+								const v = normalizePath(value);
+								if (v && !this.plugin.settings.excludedFolders.includes(v) && this.app.vault.getAbstractFileByPath(v) instanceof TFolder) {
+									this.plugin.settings.excludedFolders.unshift(v);
+									void this.plugin.saveSettings();
+									this.update();
+									input.value = "";
+								}
+							};
+							input.addEventListener("focus", () => input.dispatchEvent(new Event("input")));
+							input.addEventListener("keydown", (e) => {
+								if (e.key === "Enter") {
+									const v = normalizePath(input.value.trim());
+									if (v && !this.plugin.settings.excludedFolders.includes(v) && this.app.vault.getAbstractFileByPath(v) instanceof TFolder) {
+										this.plugin.settings.excludedFolders.unshift(v);
+										void this.plugin.saveSettings();
+										this.update();
+										input.value = "";
+									}
+								}
+							});
+						},
+					},
+					{
+						type: "list",
+						heading: "Excluded folders",
+						emptyState: "No excluded folders",
+						onDelete: (index: number) => {
+							this.plugin.settings.excludedFolders.splice(index, 1);
+							void this.plugin.saveSettings();
+							this.update();
+						},
+						items: this.plugin.settings.excludedFolders.map((path) => ({
+							name: path,
+						})),
+					},
+				],
+			},
+		];
+	}
 }
