@@ -458,7 +458,7 @@ removeBtn.addEventListener("click", (e) => {
 		if (!this.focusDropdownEl) return;
 		this.focusDropdownEl.show();
 		this.renderFocusDropdown();
-		requestAnimationFrame(() => {
+		window.requestAnimationFrame(() => {
 			const dropdown = this.focusDropdownEl;
 			if (!dropdown || dropdown.style.display === "none") return;
 			const filtered = this.getFilteredFolders();
